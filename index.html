@@ -15,7 +15,6 @@
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--qr)}
     .screen{position:relative;min-height:100vh;display:flex;flex-direction:column}
-
     .camera{position:relative;flex:1;min-height:64vh;background:#000;overflow:hidden}
     video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
 
@@ -28,7 +27,8 @@
 
     .close{
       position:absolute;right:14px;top:14px;width:46px;height:46px;
-      display:grid;place-items:center;cursor:pointer;color:var(--qr)
+      display:grid;place-items:center;cursor:pointer;color:var(--qr);
+      z-index:10;
     }
     .close:active{transform:scale(.98)}
     .close svg{width:20px;height:20px}
@@ -146,7 +146,6 @@
 <script>
 const qs = new URLSearchParams(location.search);
 const GAS_BASE = "https://script.google.com/macros/s/AKfycbzCXvrFKzy6BLsh2l5NJCBt_6yUtzqCcdyAsUl1WPKrBMfhmpahsL-Ej2Ggsqi4l7gD/exec";
-
 const USER = (qs.get("user") || "").trim();
 const RETURN_URL = (qs.get("return_url") || "").trim();
 
@@ -161,6 +160,8 @@ let detector = null;
 let running = false;
 let locked = false;
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 function showToast(t){
   toast.textContent = t;
   toast.classList.add("show");
@@ -168,12 +169,27 @@ function showToast(t){
   window.__t = setTimeout(()=>toast.classList.remove("show"), 1400);
 }
 
-function exitScanner(){
+function stopCam(){
+  running = false;
+  try {
+    if (v) v.pause();
+  } catch(e) {}
+  if (stream) {
+    try { stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+  }
+  stream = null;
+  if (v) v.srcObject = null;
+}
+
+async function exitScanner(){
   stopCam();
+  await sleep(80); // give time for tracks to release on mobile
   if (RETURN_URL) {
     location.href = RETURN_URL;
   } else if (window.history.length > 1) {
     history.back();
+  } else {
+    location.href = "about:blank";
   }
 }
 
@@ -207,13 +223,6 @@ async function startCam(){
     manualArea.classList.add("show");
     showToast("コード入力");
   }
-}
-
-function stopCam(){
-  running = false;
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  stream = null;
-  v.srcObject = null;
 }
 
 async function scanLoop(){
@@ -259,17 +268,22 @@ document.getElementById("close").addEventListener("click", exitScanner);
 document.getElementById("manualToggle").addEventListener("click", () => {
   manualArea.classList.toggle("show");
 });
-
 document.getElementById("hideManual").addEventListener("click", () => {
   manualArea.classList.remove("show");
 });
-
 document.getElementById("manualBtn").addEventListener("click", async () => {
   const val = (manual.value || "").trim();
   if (!val) { showToast("QR_ID"); return; }
   locked = true;
   showToast("返却中");
   await doReturn(val);
+});
+
+/* IMPORTANT: stop camera whenever the page is leaving */
+window.addEventListener("pagehide", stopCam);
+window.addEventListener("beforeunload", stopCam);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") stopCam();
 });
 </script>
 </body>
