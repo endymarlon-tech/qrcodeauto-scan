@@ -8,10 +8,8 @@
     :root{
       --bg:#0b0f14;
       --qr: hsl(246 47% 52%);
-
       --glassGray: rgba(255,255,255,.10);
       --glassBorder: rgba(255,255,255,.20);
-
       --navy: hsl(254 100% 18%);
     }
     *{box-sizing:border-box}
@@ -170,8 +168,13 @@ function showToast(t){
   window.__t = setTimeout(()=>toast.classList.remove("show"), 1400);
 }
 
-function goBack(){
-  if (RETURN_URL) location.href = RETURN_URL;
+function exitScanner(){
+  stopCam();
+  if (RETURN_URL) {
+    location.href = RETURN_URL;
+  } else if (window.history.length > 1) {
+    history.back();
+  }
 }
 
 async function startCam(){
@@ -236,9 +239,8 @@ async function doReturn(qrId){
     const res = await fetch(url, { method:"GET" });
     const data = await res.json();
     if (data && data.ok){
-      stopCam();
       showToast("完了");
-      setTimeout(() => goBack(), 650);
+      setTimeout(() => exitScanner(), 600);
     } else {
       locked = false;
       showToast("失敗");
@@ -252,7 +254,7 @@ async function doReturn(qrId){
 }
 
 document.getElementById("start").addEventListener("click", startCam);
-document.getElementById("close").addEventListener("click", () => { stopCam(); goBack(); });
+document.getElementById("close").addEventListener("click", exitScanner);
 
 document.getElementById("manualToggle").addEventListener("click", () => {
   manualArea.classList.toggle("show");
