@@ -5,46 +5,143 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <title>QR返却</title>
   <style>
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:#0b0f14;color:#fff}
-    .wrap{padding:14px;display:flex;flex-direction:column;gap:12px}
-    .card{background:#121a24;border-radius:14px;padding:12px}
-    .title{font-size:16px;font-weight:700;margin:0 0 6px}
-    .sub{opacity:.8;font-size:12px;margin:0}
-    video{width:100%;border-radius:14px;background:#000}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    button{border:0;border-radius:12px;padding:12px;font-size:14px;font-weight:700}
-    .btn{background:#2b74ff;color:#fff;flex:1;min-width:140px}
-    .btn2{background:#1d2735;color:#fff;flex:1;min-width:140px}
-    .msg{font-size:13px;opacity:.9;word-break:break-word;line-height:1.35}
-    input{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #2a3a52;background:#0b0f14;color:#fff;padding:12px;font-size:14px}
-    .hint{opacity:.75;font-size:12px;margin-top:8px}
+    :root{
+      --bg:#0b0f14;
+      --qr: hsl(246 47% 52%);
+
+      --glassGray: rgba(255,255,255,.10);
+      --glassBorder: rgba(255,255,255,.20);
+
+      --navy: hsl(254 100% 18%);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--qr)}
+    .screen{position:relative;min-height:100vh;display:flex;flex-direction:column}
+
+    .camera{position:relative;flex:1;min-height:64vh;background:#000;overflow:hidden}
+    video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+
+    .titleBar{
+      position:absolute;left:14px;right:14px;top:14px;height:46px;
+      display:flex;align-items:center;justify-content:center;
+      border-radius:14px;background:var(--glassGray);border:1px solid var(--glassBorder);
+      font-weight:900;letter-spacing:.02em;font-size:20px;pointer-events:none;color:var(--qr)
+    }
+
+    .close{
+      position:absolute;right:14px;top:14px;width:46px;height:46px;
+      display:grid;place-items:center;cursor:pointer;color:var(--qr)
+    }
+    .close:active{transform:scale(.98)}
+    .close svg{width:20px;height:20px}
+
+    .frameWrap{
+      position:absolute;left:0;right:0;top:0;bottom:0;
+      display:flex;align-items:center;justify-content:center;padding:18px;pointer-events:none
+    }
+    .frame{
+      width:min(52vw, 220px);aspect-ratio:1/1;border-radius:20px;
+      border:4px solid color-mix(in srgb, var(--qr) 88%, white);
+      box-shadow:0 0 0 9999px rgba(0,0,0,.26), 0 10px 26px rgba(0,0,0,.38)
+    }
+
+    .frost{
+      position:absolute;inset:0;
+      background:radial-gradient(120% 80% at 50% 30%, rgba(255,255,255,.10), rgba(255,255,255,.03) 60%, rgba(0,0,0,0) 100%), rgba(255,255,255,.05);
+      transition:opacity 180ms ease;opacity:1;pointer-events:none
+    }
+    .frost.hide{opacity:0}
+
+    .toast{
+      position:absolute;left:50%;transform:translateX(-50%);bottom:92px;
+      background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.9);
+      padding:10px 12px;border-radius:999px;font-size:12px;display:none;
+      max-width:calc(100% - 28px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none
+    }
+    .toast.show{display:block}
+
+    .bottom{
+      padding:14px 14px 16px;
+      display:flex;flex-direction:column;gap:10px;align-items:center
+    }
+
+    .btnMain{
+      width:min(78vw, 320px);
+      border:0;border-radius:16px;padding:10px 14px;
+      background: color-mix(in srgb, var(--navy) 78%, transparent);
+      border:1px solid rgba(255,255,255,.10);
+      color:var(--qr);
+      display:flex;align-items:center;justify-content:center;cursor:pointer
+    }
+    .btnMain:active{transform:scale(.99)}
+    .btnMain svg{width:26px;height:26px}
+
+    .manualNote{
+      text-align:center;font-size:12px;color:var(--qr);opacity:.85;margin-top:-2px
+    }
+    .manualToggle{
+      font-size:12px;color:var(--qr);text-decoration:underline;cursor:pointer;
+      padding:6px 10px;border-radius:999px;margin-top:-6px
+    }
+
+    .manual{
+      display:none;width:min(88vw, 380px);gap:10px;flex-direction:column;
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;padding:12px;color:rgba(255,255,255,.92)
+    }
+    .manual.show{display:flex}
+    input{
+      width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.22);color:rgba(255,255,255,.92);
+      padding:12px 12px;font-size:14px;outline:none
+    }
+    .manualRow{display:flex;gap:10px}
+    .miniBtn{
+      flex:1;border:0;border-radius:14px;padding:12px;
+      background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);
+      color:rgba(255,255,255,.92);font-weight:900;cursor:pointer
+    }
+    .miniBtn:active{transform:scale(.99)}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <p class="title">QRで返却</p>
-    <p class="sub">カメラまたは手入力で返却できます。</p>
+<div class="screen">
+  <div class="camera">
+    <div class="titleBar">QR返却</div>
+
+    <div class="close" id="close" aria-label="close">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div class="frameWrap"><div class="frame"></div></div>
+
+    <div class="frost" id="frost"></div>
+    <div class="toast" id="toast"></div>
+
+    <video id="v" playsinline></video>
   </div>
 
-  <div class="card">
-    <div class="row">
-      <button class="btn" id="start">カメラ開始</button>
-      <button class="btn2" id="stop">停止</button>
-    </div>
-    <p class="msg" id="msg">開始ボタンを押してください。</p>
-  </div>
+  <div class="bottom">
+    <button class="btnMain" id="start" aria-label="start camera">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M4 7.5A3.5 3.5 0 0 1 7.5 4h9A3.5 3.5 0 0 1 20 7.5v9A3.5 3.5 0 0 1 16.5 20h-9A3.5 3.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M8 9h3V6H8v3Zm0 9h3v-3H8v3Zm5-9h3V6h-3v3Zm0 9h3v-3h-3v3Z" fill="currentColor" opacity=".9"/>
+        <path d="M9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".7"/>
+      </svg>
+    </button>
 
-  <video id="v" playsinline></video>
+    <div class="manualNote">カメラが使えない場合はこちら</div>
+    <span class="manualToggle" id="manualToggle">コード入力</span>
 
-  <div class="card">
-    <p class="sub">手入力（カメラが使えない場合）</p>
-    <input id="manual" placeholder="KEY_4F_H39" />
-    <div class="row" style="margin-top:10px">
-      <button class="btn" id="manualBtn">手入力で返却</button>
-      <button class="btn2" id="back">戻る</button>
+    <div class="manual" id="manualArea">
+      <input id="manual" placeholder="KEY_4F_H39" />
+      <div class="manualRow">
+        <button class="miniBtn" id="manualBtn">返却</button>
+        <button class="miniBtn" id="hideManual">閉じる</button>
+      </div>
     </div>
-    <div class="hint">QRの中身は QR_ID（例: KEY_4F_H39）を推奨</div>
   </div>
 </div>
 
@@ -56,38 +153,56 @@ const USER = (qs.get("user") || "").trim();
 const RETURN_URL = (qs.get("return_url") || "").trim();
 
 const v = document.getElementById("v");
-const msg = document.getElementById("msg");
+const toast = document.getElementById("toast");
+const frost = document.getElementById("frost");
+const manualArea = document.getElementById("manualArea");
 const manual = document.getElementById("manual");
 
 let stream = null;
 let detector = null;
 let running = false;
+let locked = false;
 
-function setMsg(t){ msg.textContent = t; }
+function showToast(t){
+  toast.textContent = t;
+  toast.classList.add("show");
+  clearTimeout(window.__t);
+  window.__t = setTimeout(()=>toast.classList.remove("show"), 1400);
+}
+
+function goBack(){
+  if (RETURN_URL) location.href = RETURN_URL;
+}
 
 async function startCam(){
-  if (running) return;
+  if (running || locked) return;
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    setMsg("getUserMedia非対応。手入力をご利用ください。");
+    manualArea.classList.add("show");
+    showToast("コード入力");
     return;
   }
 
   try{
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio:false });
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
     v.srcObject = stream;
     await v.play();
     running = true;
+    frost.classList.add("hide");
 
     if ("BarcodeDetector" in window) {
       detector = new BarcodeDetector({ formats: ["qr_code"] });
-      setMsg("スキャン中…");
       scanLoop();
     } else {
-      setMsg("BarcodeDetector非対応（Chrome推奨）。手入力も利用できます。");
+      manualArea.classList.add("show");
+      showToast("コード入力");
     }
   }catch(e){
-    setMsg("カメラ起動失敗: " + e);
+    manualArea.classList.add("show");
+    showToast("コード入力");
   }
 }
 
@@ -96,18 +211,17 @@ function stopCam(){
   if (stream) stream.getTracks().forEach(t => t.stop());
   stream = null;
   v.srcObject = null;
-  setMsg("停止しました。");
 }
 
 async function scanLoop(){
-  if (!running || !detector) return;
+  if (!running || !detector || locked) return;
   try{
     const codes = await detector.detect(v);
     if (codes && codes.length){
       const qr = (codes[0].rawValue || "").trim();
       if (qr){
-        running = false;
-        setMsg("検出: " + qr + " / 返却中…");
+        locked = true;
+        showToast("返却中");
         await doReturn(qr);
         return;
       }
@@ -122,33 +236,39 @@ async function doReturn(qrId){
     const res = await fetch(url, { method:"GET" });
     const data = await res.json();
     if (data && data.ok){
-      setMsg("返却完了。戻ります。");
       stopCam();
-      setTimeout(() => { if (RETURN_URL) location.href = RETURN_URL; }, 700);
+      showToast("完了");
+      setTimeout(() => goBack(), 650);
     } else {
-      setMsg("返却失敗: " + JSON.stringify(data));
-      running = true;
-      scanLoop();
+      locked = false;
+      showToast("失敗");
+      if (running) scanLoop();
     }
   }catch(e){
-    setMsg("通信エラー: " + e);
-    running = true;
-    scanLoop();
+    locked = false;
+    showToast("失敗");
+    if (running) scanLoop();
   }
 }
 
 document.getElementById("start").addEventListener("click", startCam);
-document.getElementById("stop").addEventListener("click", stopCam);
+document.getElementById("close").addEventListener("click", () => { stopCam(); goBack(); });
+
+document.getElementById("manualToggle").addEventListener("click", () => {
+  manualArea.classList.toggle("show");
+});
+
+document.getElementById("hideManual").addEventListener("click", () => {
+  manualArea.classList.remove("show");
+});
+
 document.getElementById("manualBtn").addEventListener("click", async () => {
   const val = (manual.value || "").trim();
-  if (!val) { setMsg("QR_IDを入力してください。"); return; }
-  setMsg("返却中…");
+  if (!val) { showToast("QR_ID"); return; }
+  locked = true;
+  showToast("返却中");
   await doReturn(val);
-});
-document.getElementById("back").addEventListener("click", () => {
-  if (RETURN_URL) location.href = RETURN_URL;
 });
 </script>
 </body>
 </html>
-
