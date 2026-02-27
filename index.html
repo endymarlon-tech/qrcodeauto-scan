@@ -14,21 +14,31 @@
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--qr)}
-    .screen{position:relative;min-height:100vh;display:flex;flex-direction:column}
+    .screen{min-height:100vh;display:flex;flex-direction:column}
+
     .camera{position:relative;flex:1;min-height:64vh;background:#000;overflow:hidden}
-    video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+    video{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+      background:#000;
+    }
 
     .titleBar{
-      position:absolute;left:14px;right:14px;top:14px;height:46px;
+      position:fixed;left:14px;right:14px;top:14px;height:46px;
       display:flex;align-items:center;justify-content:center;
       border-radius:14px;background:var(--glassGray);border:1px solid var(--glassBorder);
-      font-weight:900;letter-spacing:.02em;font-size:20px;pointer-events:none;color:var(--qr)
+      font-weight:900;letter-spacing:.02em;font-size:20px;pointer-events:none;color:var(--qr);
+      z-index:30;
     }
 
     .close{
-      position:absolute;right:14px;top:14px;width:46px;height:46px;
+      position:fixed;right:14px;top:14px;width:46px;height:46px;
       display:grid;place-items:center;cursor:pointer;color:var(--qr);
-      z-index:10;
+      z-index:40;
+      -webkit-tap-highlight-color: transparent;
+      user-select:none;
     }
     .close:active{transform:scale(.98)}
     .close svg{width:20px;height:20px}
@@ -51,10 +61,11 @@
     .frost.hide{opacity:0}
 
     .toast{
-      position:absolute;left:50%;transform:translateX(-50%);bottom:92px;
+      position:fixed;left:50%;transform:translateX(-50%);bottom:92px;
       background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.9);
       padding:10px 12px;border-radius:999px;font-size:12px;display:none;
-      max-width:calc(100% - 28px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none
+      max-width:calc(100% - 28px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;
+      z-index:50;
     }
     .toast.show{display:block}
 
@@ -114,14 +125,13 @@
     </div>
 
     <div class="frameWrap"><div class="frame"></div></div>
-
     <div class="frost" id="frost"></div>
     <div class="toast" id="toast"></div>
 
-    <video id="v" playsinline></video>
+    <video id="v" playsinline webkit-playsinline muted></video>
   </div>
 
-  <div class="bottom">
+  <div class="bottom" id="bottom">
     <button class="btnMain" id="start" aria-label="start camera">
       <svg viewBox="0 0 24 24" fill="none">
         <path d="M4 7.5A3.5 3.5 0 0 1 7.5 4h9A3.5 3.5 0 0 1 20 7.5v9A3.5 3.5 0 0 1 16.5 20h-9A3.5 3.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.8"/>
@@ -171,30 +181,42 @@ function showToast(t){
 
 function stopCam(){
   running = false;
-  try {
-    if (v) v.pause();
-  } catch(e) {}
+  try { v.pause(); } catch(e) {}
+  try { v.srcObject = null; } catch(e) {}
+  try { v.load(); } catch(e) {}
   if (stream) {
     try { stream.getTracks().forEach(t => t.stop()); } catch(e) {}
   }
   stream = null;
-  if (v) v.srcObject = null;
+}
+
+async function exitFullscreenIfAny(){
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      await document.exitFullscreen();
+    }
+  } catch(e) {}
 }
 
 async function exitScanner(){
+  // feedback so you know it fired
+  showToast("閉じる");
+  await exitFullscreenIfAny();
   stopCam();
-  await sleep(80); // give time for tracks to release on mobile
-  if (RETURN_URL) {
-    location.href = RETURN_URL;
-  } else if (window.history.length > 1) {
-    history.back();
-  } else {
-    location.href = "about:blank";
-  }
+  await sleep(120);
+
+  if (RETURN_URL) location.href = RETURN_URL;
+  else if (history.length > 1) history.back();
 }
 
 async function startCam(){
   if (running || locked) return;
+
+  // force inline behavior on mobile
+  v.setAttribute("playsinline", "");
+  v.setAttribute("webkit-playsinline", "");
+  v.muted = true;
+  v.disablePictureInPicture = true;
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     manualArea.classList.add("show");
@@ -279,7 +301,7 @@ document.getElementById("manualBtn").addEventListener("click", async () => {
   await doReturn(val);
 });
 
-/* IMPORTANT: stop camera whenever the page is leaving */
+// always stop camera if the page is leaving
 window.addEventListener("pagehide", stopCam);
 window.addEventListener("beforeunload", stopCam);
 document.addEventListener("visibilitychange", () => {
