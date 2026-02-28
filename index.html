@@ -179,6 +179,11 @@ function showToast(t){
   window.__t = setTimeout(()=>toast.classList.remove("show"), 1400);
 }
 
+function resetUI(){
+  locked = false;
+  frost.classList.remove("hide"); // volta para “tela inicial” do scanner
+}
+
 function stopCam(){
   running = false;
   try { v.pause(); } catch(e) {}
@@ -209,6 +214,18 @@ async function exitScanner(){
   else if (history.length > 1) history.back();
 }
 
+// ✅ X の挙動：
+// - カメラON → 停止してスキャナー初期画面へ戻る
+// - カメラOFF → スキャナーページを閉じる
+async function onX(){
+  if (running) {
+    stopCam();
+    resetUI();
+    return;
+  }
+  await exitScanner();
+}
+
 async function startCam(){
   if (running || locked) return;
 
@@ -236,11 +253,9 @@ async function startCam(){
       detector = new BarcodeDetector({ formats: ["qr_code"] });
       scanLoop();
     } else {
-      // ✅ ここで manual を自動で開かない（あなたの希望）
       showToast("Chrome推奨");
     }
   }catch(e){
-    // ✅ ここで manual を自動で開かない（あなたの希望）
     showToast("許可が必要");
   }
 }
@@ -282,8 +297,9 @@ async function doReturn(qrId){
   }
 }
 
+// events
 document.getElementById("start").addEventListener("click", startCam);
-document.getElementById("close").addEventListener("click", exitScanner);
+document.getElementById("close").addEventListener("click", onX);
 
 document.getElementById("manualToggle").addEventListener("click", () => {
   manualArea.classList.toggle("show");
@@ -299,6 +315,7 @@ document.getElementById("manualBtn").addEventListener("click", async () => {
   await doReturn(val);
 });
 
+// always stop camera if the page is leaving
 window.addEventListener("pagehide", stopCam);
 window.addEventListener("beforeunload", stopCam);
 document.addEventListener("visibilitychange", () => {
