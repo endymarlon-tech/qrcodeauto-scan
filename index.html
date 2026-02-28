@@ -188,6 +188,7 @@ function stopCam(){
     try { stream.getTracks().forEach(t => t.stop()); } catch(e) {}
   }
   stream = null;
+  detector = null;
 }
 
 async function exitFullscreenIfAny(){
@@ -199,7 +200,6 @@ async function exitFullscreenIfAny(){
 }
 
 async function exitScanner(){
-  // feedback so you know it fired
   showToast("閉じる");
   await exitFullscreenIfAny();
   stopCam();
@@ -212,15 +212,13 @@ async function exitScanner(){
 async function startCam(){
   if (running || locked) return;
 
-  // force inline behavior on mobile
   v.setAttribute("playsinline", "");
   v.setAttribute("webkit-playsinline", "");
   v.muted = true;
   v.disablePictureInPicture = true;
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    manualArea.classList.add("show");
-    showToast("コード入力");
+    showToast("カメラ非対応");
     return;
   }
 
@@ -238,12 +236,12 @@ async function startCam(){
       detector = new BarcodeDetector({ formats: ["qr_code"] });
       scanLoop();
     } else {
-      manualArea.classList.add("show");
-      showToast("コード入力");
+      // ✅ ここで manual を自動で開かない（あなたの希望）
+      showToast("Chrome推奨");
     }
   }catch(e){
-    manualArea.classList.add("show");
-    showToast("コード入力");
+    // ✅ ここで manual を自動で開かない（あなたの希望）
+    showToast("許可が必要");
   }
 }
 
@@ -301,7 +299,6 @@ document.getElementById("manualBtn").addEventListener("click", async () => {
   await doReturn(val);
 });
 
-// always stop camera if the page is leaving
 window.addEventListener("pagehide", stopCam);
 window.addEventListener("beforeunload", stopCam);
 document.addEventListener("visibilitychange", () => {
