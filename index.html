@@ -181,7 +181,18 @@ function showToast(t){
 
 function resetUI(){
   locked = false;
-  frost.classList.remove("hide"); // volta para “tela inicial” do scanner
+  frost.classList.remove("hide");
+}
+
+/* ✅ これが重要：runningがズレても「本当にカメラが生きてるか」を見る */
+function isCameraLive(){
+  try{
+    if (!stream) return false;
+    const tracks = stream.getTracks ? stream.getTracks() : [];
+    return tracks.some(t => t && t.readyState === "live");
+  }catch(e){
+    return false;
+  }
 }
 
 function stopCam(){
@@ -214,13 +225,14 @@ async function exitScanner(){
   else if (history.length > 1) history.back();
 }
 
-// ✅ X の挙動：
-// - カメラON → 停止してスキャナー初期画面へ戻る
-// - カメラOFF → スキャナーページを閉じる
-async function onX(){
-  if (running) {
+/* ✅ X: カメラONなら停止だけ / OFFならページを閉じる */
+async function onX(e){
+  try { e.preventDefault(); e.stopPropagation(); } catch(_) {}
+
+  if (isCameraLive() || running) {
     stopCam();
     resetUI();
+    showToast("停止");
     return;
   }
   await exitScanner();
@@ -297,7 +309,6 @@ async function doReturn(qrId){
   }
 }
 
-// events
 document.getElementById("start").addEventListener("click", startCam);
 document.getElementById("close").addEventListener("click", onX);
 
@@ -315,7 +326,6 @@ document.getElementById("manualBtn").addEventListener("click", async () => {
   await doReturn(val);
 });
 
-// always stop camera if the page is leaving
 window.addEventListener("pagehide", stopCam);
 window.addEventListener("beforeunload", stopCam);
 document.addEventListener("visibilitychange", () => {
